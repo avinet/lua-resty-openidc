@@ -1346,7 +1346,7 @@ local function openidc_logout(opts, session)
 end
 
 -- returns a valid access_token (eventually refreshing the token)
-local function openidc_access_token(opts, session, try_to_renew)
+local function openidc_access_token(opts, session, try_to_renew, force_renew)
 
   local err
 
@@ -1354,7 +1354,7 @@ local function openidc_access_token(opts, session, try_to_renew)
     return nil, err
   end
   local current_time = ngx.time()
-  if current_time < session.data.access_token_expiration then
+  if not force_renew and current_time < session.data.access_token_expiration then
     return session.data.access_token, err
   end
   if not try_to_renew then
@@ -1586,6 +1586,21 @@ function openidc.access_token(opts, session_opts)
   return token, err
 end
 
+function openidc.force_renew(opts, session_opts)
+  local session = r_session.start(session_opts)
+  local access_token, err = openidc_access_token(opts, session, true, true)
+  local id_token = session.data.id_token
+  local user = session.data.user
+  session:close()
+
+  return
+  {
+    id_token = id_token,
+    access_token = access_token,
+    user = user
+  },
+  err
+end
 
 -- get an OAuth 2.0 bearer access token from the HTTP request cookies
 local function openidc_get_bearer_access_token_from_cookie(opts)
